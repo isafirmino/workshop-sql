@@ -131,7 +131,10 @@ createApp({
       suspeito: "",
       pessoasNomes: [],
       solveLoading: false,
-      tentativasRestantes: 3,
+      desistirLoading: false,
+      confirmDesistirDialog: false,
+      tentativasCount: 0,
+      gaveUp: false,
 
       finalElapsed: null,
       rankingPosicao: null,
@@ -185,6 +188,9 @@ createApp({
       const outras = this.pgHistory.filter((h) => !h.fav);
       return [...favoritas, ...outras];
     },
+    tentativasLabel() {
+      return this.tentativasCount === 1 ? "tentativa" : "tentativas";
+    },
   },
   methods: {
     formatTime(totalSeconds) {
@@ -212,7 +218,7 @@ createApp({
     async loadRanking() {
       try {
         const lista = await api("GET", "/api/ranking");
-        this.rankingTotal = lista.length;
+        this.rankingTotal = lista.filter((e) => e.posicao !== null).length;
         const entry = lista.find((e) => e.nome === this.nome);
         this.rankingPosicao = entry ? entry.posicao : null;
       } catch (e) {}
@@ -223,10 +229,11 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
-        this.tentativasRestantes = me.tentativas_restantes;
+        this.tentativasCount = me.tentativas;
         this.loadPessoasNomes();
-        if (me.solved) {
+        if (me.solved || me.desistiu) {
           this.finalElapsed = me.elapsed_seconds;
+          this.gaveUp = me.desistiu;
           this.motiveReveal = me.motive_reveal;
           this.solutionPath = me.solution_path || [];
           this.stage = "vitoria";
@@ -252,7 +259,7 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
-        this.tentativasRestantes = me.tentativas_restantes;
+        this.tentativasCount = me.tentativas;
         this.stage = "game";
         this.startTimer();
         this.loadPessoasNomes();
@@ -367,8 +374,8 @@ createApp({
       this.solveLoading = true;
       try {
         const resp = await api("POST", "/api/solve", { suspeito });
-        if (resp.tentativas_restantes !== null && resp.tentativas_restantes !== undefined) {
-          this.tentativasRestantes = resp.tentativas_restantes;
+        if (resp.tentativas !== null && resp.tentativas !== undefined) {
+          this.tentativasCount = resp.tentativas;
         }
         if (resp.correct) {
           this.finalElapsed = resp.elapsed_seconds;
@@ -378,11 +385,9 @@ createApp({
           clearInterval(this.timerHandle);
           this.stage = "vitoria";
           this.loadRanking();
-        } else if (this.tentativasRestantes <= 0) {
-          this.notify("Você usou suas 3 tentativas. Continue investigando, mas não dá mais pra acusar.", "error");
         } else {
           this.notify(
-            `Não foi essa pessoa — restam ${this.tentativasRestantes} tentativa(s).`,
+            `Não foi essa pessoa — ${this.tentativasCount} ${this.tentativasLabel} até agora.`,
             "warning"
           );
         }
@@ -390,6 +395,24 @@ createApp({
         this.notify(e.message);
       } finally {
         this.solveLoading = false;
+      }
+    },
+    async desistir() {
+      this.confirmDesistirDialog = false;
+      this.desistirLoading = true;
+      try {
+        const resp = await api("POST", "/api/desistir");
+        this.finalElapsed = resp.elapsed_seconds;
+        this.gaveUp = true;
+        this.motiveReveal = resp.motive_reveal;
+        this.solutionPath = resp.solution_path || [];
+        clearInterval(this.timerHandle);
+        this.stage = "vitoria";
+        this.loadRanking();
+      } catch (e) {
+        this.notify(e.message);
+      } finally {
+        this.desistirLoading = false;
       }
     },
   },
@@ -629,20 +652,29 @@ createApp({
                     label="Nome do suspeito"
                     variant="outlined"
                     density="comfortable"
-                    :disabled="tentativasRestantes <= 0"
                   />
                   <v-btn
                     block
                     color="secondary"
                     size="large"
                     :loading="solveLoading"
-                    :disabled="tentativasRestantes <= 0"
                     @click="acusar"
                   >
                     Acusar
                   </v-btn>
+                  <v-btn
+                    v-if="tentativasCount >= 6 || elapsedSeconds >= 1800"
+                    block
+                    variant="text"
+                    color="grey"
+                    class="mt-2"
+                    :loading="desistirLoading"
+                    @click="confirmDesistirDialog = true"
+                  >
+                    Desistir
+                  </v-btn>
                   <p class="text-caption mt-2 text-center" style="opacity: 0.75;">
-                    {{ tentativasRestantes }} tentativa(s) restante(s)
+                    {{ tentativasCount }} {{ tentativasLabel }} até agora
                   </p>
                 </v-card-text>
               </v-card>
@@ -767,10 +799,11 @@ createApp({
         <v-card max-width="520" class="pa-4" elevation="12">
           <v-card-item>
             <div class="pdm-eyebrow mb-2">Caso encerrado</div>
-            <v-card-title class="pdm-display text-h4">🦆 Caso Resolvido!</v-card-title>
+            <v-card-title class="pdm-display text-h4">{{ gaveUp ? '🏳️ Você desistiu' : '🦆 Caso Resolvido!' }}</v-card-title>
           </v-card-item>
           <v-card-text>
-            <p class="mb-4">Parabéns, {{ nome }}! Você desvendou o sumiço do Pato da Mega.</p>
+            <p v-if="gaveUp" class="mb-4">Sem problemas, {{ nome }} — aqui está o que você não viu:</p>
+            <p v-else class="mb-4">Parabéns, {{ nome }}! Você desvendou o sumiço do Pato da Mega.</p>
 
             <v-row dense class="mb-4">
               <v-col cols="6">
@@ -816,6 +849,23 @@ createApp({
         </v-card>
       </div>
     </template>
+
+    <v-dialog v-model="confirmDesistirDialog" max-width="420">
+      <v-card>
+        <v-card-title class="pdm-display">Desistir do caso?</v-card-title>
+        <v-card-text>
+          Não dá pra voltar atrás — você vai ver a solução e aparece no
+          ranking sem posição, lá embaixo.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="confirmDesistirDialog = false">Cancelar</v-btn>
+          <v-btn color="error" variant="tonal" :loading="desistirLoading" @click="desistir">
+            Desistir
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-snackbar v-model="snackbar" :color="snackbarColor" timeout="4000">
       {{ snackbarText }}

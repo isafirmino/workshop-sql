@@ -39,6 +39,7 @@ createApp({
       return `${mm}:${ss}`;
     },
     medalFor(posicao) {
+      if (!posicao) return "";
       return MEDALS[posicao - 1] || "";
     },
     async refresh() {
@@ -76,14 +77,16 @@ createApp({
                 <th class="text-h6">Investigador(a)</th>
                 <th class="text-h6 text-right">Tempo</th>
                 <th class="text-h6 text-right">Queries</th>
+                <th class="text-h6 text-right">Tentativas</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="e in entries" :key="e.posicao">
-                <td class="text-h6">{{ medalFor(e.posicao) || e.posicao }}</td>
+              <tr v-for="(e, i) in entries" :key="i" :style="e.desistiu ? 'opacity: 0.6;' : ''">
+                <td class="text-h6">{{ medalFor(e.posicao) || (e.posicao || '—') }}</td>
                 <td class="text-h6">{{ e.nome }}</td>
-                <td class="text-h6 text-right pdm-timer">{{ formatTime(e.elapsed_seconds) }}</td>
+                <td class="text-h6 text-right pdm-timer">{{ e.elapsed_seconds !== null ? formatTime(e.elapsed_seconds) : '—' }}</td>
                 <td class="text-h6 text-right">{{ e.query_count }}</td>
+                <td class="text-h6 text-right">{{ e.tentativas }}</td>
               </tr>
             </tbody>
           </v-table>

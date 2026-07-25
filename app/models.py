@@ -16,5 +16,6 @@ class Participante(Base):
     )
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     solved_at = Column(DateTime(timezone=True), nullable=True)
+    desistiu_at = Column(DateTime(timezone=True), nullable=True)
     query_count = Column(Integer, nullable=False, default=0)
     tentativas = Column(Integer, nullable=False, default=0)
