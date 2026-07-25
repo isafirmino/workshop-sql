@@ -26,7 +26,7 @@ services:
       # senha do investigador fica fixa em app/seed/caso.sql, trocar nos dois lugares se mudar
       INVESTIGADOR_DATABASE_URL: postgresql+psycopg2://investigador:investigador_ro_2026@db:5432/${POSTGRES_DB:-pato_da_mega}
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
 
   cloudflared:
     image: cloudflare/cloudflared:latest
