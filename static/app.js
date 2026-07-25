@@ -163,6 +163,7 @@ createApp({
       suspeito: "",
       pessoasNomes: [],
       solveLoading: false,
+      tentativasRestantes: 3,
 
       finalElapsed: null,
       rankingPosicao: null,
@@ -254,6 +255,7 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
+        this.tentativasRestantes = me.tentativas_restantes;
         this.loadPessoasNomes();
         if (me.solved) {
           this.finalElapsed = me.elapsed_seconds;
@@ -280,6 +282,7 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
+        this.tentativasRestantes = me.tentativas_restantes;
         this.stage = "game";
         this.startTimer();
         this.loadPessoasNomes();
@@ -394,14 +397,22 @@ createApp({
       this.solveLoading = true;
       try {
         const resp = await api("POST", "/api/solve", { suspeito });
+        if (resp.tentativas_restantes !== null && resp.tentativas_restantes !== undefined) {
+          this.tentativasRestantes = resp.tentativas_restantes;
+        }
         if (resp.correct) {
           this.finalElapsed = resp.elapsed_seconds;
           this.queryCount = resp.query_count;
           clearInterval(this.timerHandle);
           this.stage = "vitoria";
           this.loadRanking();
+        } else if (this.tentativasRestantes <= 0) {
+          this.notify("Você usou suas 3 tentativas. Continue investigando, mas não dá mais pra acusar.", "error");
         } else {
-          this.notify("Não foi essa pessoa — continue investigando!", "warning");
+          this.notify(
+            `Não foi essa pessoa — restam ${this.tentativasRestantes} tentativa(s).`,
+            "warning"
+          );
         }
       } catch (e) {
         this.notify(e.message);
@@ -646,10 +657,21 @@ createApp({
                     label="Nome do suspeito"
                     variant="outlined"
                     density="comfortable"
+                    :disabled="tentativasRestantes <= 0"
                   />
-                  <v-btn block color="secondary" size="large" :loading="solveLoading" @click="acusar">
+                  <v-btn
+                    block
+                    color="secondary"
+                    size="large"
+                    :loading="solveLoading"
+                    :disabled="tentativasRestantes <= 0"
+                    @click="acusar"
+                  >
                     Acusar
                   </v-btn>
+                  <p class="text-caption mt-2 text-center" style="opacity: 0.75;">
+                    {{ tentativasRestantes }} tentativa(s) restante(s)
+                  </p>
                 </v-card-text>
               </v-card>
             </v-col>

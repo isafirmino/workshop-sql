@@ -23,6 +23,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api")
 
 CORRECT_TOKENS = ["rafael", "souza"]
+MAX_TENTATIVAS = 3
 
 QUERY_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 
@@ -60,6 +61,7 @@ def _me_response(p: Participante) -> MeResponse:
         solved=p.solved_at is not None,
         solved_at=p.solved_at,
         elapsed_seconds=elapsed,
+        tentativas_restantes=max(0, MAX_TENTATIVAS - p.tentativas),
     )
 
 
@@ -167,12 +169,22 @@ def solve(
             correct=True,
             elapsed_seconds=m.elapsed_seconds,
             query_count=participante.query_count,
+            tentativas_restantes=m.tentativas_restantes,
         )
+
+    if participante.tentativas >= MAX_TENTATIVAS:
+        raise HTTPException(429, "Você já usou suas 3 tentativas de acusação.")
 
     norm = _normalize(payload.suspeito)
     correct = all(tok in norm for tok in CORRECT_TOKENS)
     if not correct:
-        return SolveResponse(correct=False)
+        participante.tentativas += 1
+        db.commit()
+        db.refresh(participante)
+        return SolveResponse(
+            correct=False,
+            tentativas_restantes=max(0, MAX_TENTATIVAS - participante.tentativas),
+        )
 
     participante.solved_at = datetime.now(timezone.utc)
     db.commit()
@@ -182,6 +194,7 @@ def solve(
         correct=True,
         elapsed_seconds=m.elapsed_seconds,
         query_count=participante.query_count,
+        tentativas_restantes=m.tentativas_restantes,
     )
 
 
