@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db import get_db, investigador_engine
+from app.db import COOKIE_SECURE, get_db, investigador_engine
 from app.models import Participante
 from app.schemas import (
     MeResponse,
@@ -22,9 +22,41 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api")
 
-# Nome completo do culpado (ver app/seed/caso.sql). Aceita variações de
-# capitalização/acento e nomes parciais, desde que citem nome + sobrenome.
 CORRECT_TOKENS = ["rafael", "souza"]
+MAX_TENTATIVAS = 3
+
+MOTIVE_REVEAL = (
+    "Rafael Almeida Souza confessou: pegou o Pato da Mega pra tirar fotos em Bonito "
+    "e postar nos stories, prometendo devolver na segunda-feira. \"Era só uma "
+    'zoeira, eu ia devolver antes de todo mundo notar", disse ele.'
+)
+
+SOLUTION_PATH = [
+    {
+        "texto": "Achar o boletim do furto no Centro.",
+        "sql": "SELECT * FROM ocorrencia WHERE bairro = 'Centro';",
+    },
+    {
+        "texto": "Ler os depoimentos ligados àquela ocorrência.",
+        "sql": "SELECT * FROM depoimentos WHERE ocorrencia_id = 3;",
+    },
+    {
+        "texto": "Achar a placa exata na câmera da Rua 14 de Julho.",
+        "sql": "SELECT * FROM cameras\nWHERE local LIKE '%14 de Julho%' AND placa_carro LIKE 'HNT%';",
+    },
+    {
+        "texto": "Descobrir de quem é essa placa.",
+        "sql": "SELECT * FROM pessoas WHERE placa_carro = 'HNT4E21';",
+    },
+    {
+        "texto": "Confirmar a ligação curta e suspeita pro telefone da Beatriz.",
+        "sql": "SELECT * FROM ligacoes\nWHERE duracao_segundos < 60 AND hora BETWEEN '23:00' AND '23:10';",
+    },
+    {
+        "texto": "Confirmar a fuga: pagamento da passagem e o ônibus pra Bonito.",
+        "sql": "SELECT * FROM pix WHERE pessoa_id = 4;\nSELECT * FROM passagens WHERE pessoa_id = 4;",
+    },
+]
 
 QUERY_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 
@@ -55,13 +87,17 @@ def _me_response(p: Participante) -> MeResponse:
     now = datetime.now(timezone.utc)
     end = p.solved_at or now
     elapsed = (end - p.started_at).total_seconds()
+    solved = p.solved_at is not None
     return MeResponse(
         nome=p.nome,
         started_at=p.started_at,
         query_count=p.query_count,
-        solved=p.solved_at is not None,
+        solved=solved,
         solved_at=p.solved_at,
         elapsed_seconds=elapsed,
+        tentativas_restantes=max(0, MAX_TENTATIVAS - p.tentativas),
+        motive_reveal=MOTIVE_REVEAL if solved else None,
+        solution_path=SOLUTION_PATH if solved else None,
     )
 
 
@@ -80,7 +116,12 @@ def signup(payload: SignupRequest, response: Response, db: Session = Depends(get
     db.refresh(participante)
 
     response.set_cookie(
-        "session_token", token, httponly=True, samesite="lax", max_age=60 * 60 * 12
+        "session_token",
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+        max_age=60 * 60 * 12,
     )
     return _me_response(participante)
 
@@ -101,8 +142,7 @@ def _clean_pg_error(msg: str) -> str:
 
 @router.get("/pessoas/nomes", response_model=list[str])
 def pessoas_nomes(participante: Participante = Depends(get_participant)):
-    # Lista de nomes só pra alimentar o autocomplete do campo de resposta final
-    # (não conta como query de investigação).
+    # autocomplete, nao conta como query
     with investigador_engine.connect() as conn:
         result = conn.execute(text("SELECT nome FROM pessoas ORDER BY nome"))
         return [row[0] for row in result]
@@ -165,12 +205,24 @@ def solve(
             correct=True,
             elapsed_seconds=m.elapsed_seconds,
             query_count=participante.query_count,
+            tentativas_restantes=m.tentativas_restantes,
+            motive_reveal=m.motive_reveal,
+            solution_path=m.solution_path,
         )
+
+    if participante.tentativas >= MAX_TENTATIVAS:
+        raise HTTPException(429, "Você já usou suas 3 tentativas de acusação.")
 
     norm = _normalize(payload.suspeito)
     correct = all(tok in norm for tok in CORRECT_TOKENS)
     if not correct:
-        return SolveResponse(correct=False)
+        participante.tentativas += 1
+        db.commit()
+        db.refresh(participante)
+        return SolveResponse(
+            correct=False,
+            tentativas_restantes=max(0, MAX_TENTATIVAS - participante.tentativas),
+        )
 
     participante.solved_at = datetime.now(timezone.utc)
     db.commit()
@@ -180,6 +232,9 @@ def solve(
         correct=True,
         elapsed_seconds=m.elapsed_seconds,
         query_count=participante.query_count,
+        tentativas_restantes=m.tentativas_restantes,
+        motive_reveal=m.motive_reveal,
+        solution_path=m.solution_path,
     )
 
 

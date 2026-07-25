@@ -1,12 +1,3 @@
--- ============================================================================
--- O Sumiço do Pato da Mega — banco do caso (Campo Grande, MS)
--- Executado automaticamente pelo container do Postgres na primeira subida.
--- ============================================================================
-
--- ---------------------------------------------------------------------------
--- Schema
--- ---------------------------------------------------------------------------
-
 CREATE TABLE pessoas (
     id            SERIAL PRIMARY KEY,
     nome          TEXT NOT NULL,
@@ -69,10 +60,6 @@ CREATE TABLE cameras (
     hora            TIME NOT NULL
 );
 
--- ---------------------------------------------------------------------------
--- Pessoas (18 pessoas fictícias: testemunhas, suspeito e colegas de trabalho)
--- ---------------------------------------------------------------------------
-
 INSERT INTO pessoas (nome, telefone, endereco, bairro, placa_carro, cargo) VALUES
 ('Camila Torres',          '67991112233', 'Rua Bahia, 210',              'Jardim dos Estados', 'CGA9B12', 'Dev'),
 ('Eduardo Nascimento',     '67997654321', 'Rua 14 de Julho, 500',        'Centro',              'MSV2C88', 'Segurança (prédio vizinho)'),
@@ -93,10 +80,6 @@ INSERT INTO pessoas (nome, telefone, endereco, bairro, placa_carro, cargo) VALUE
 ('Diego Camargo',          '67995050505', 'Avenida Mato Grosso, 700',    'Monte Castelo',       'PTJ7T15', 'Financeiro'),
 ('Rodrigo Almeida',        '67997070707', 'Avenida Afonso Pena, 980',    'Centro',              'CGK6U29', 'Presidência');
 
--- ---------------------------------------------------------------------------
--- Ocorrências (boletins da mesma sexta-feira, bairros diferentes)
--- ---------------------------------------------------------------------------
-
 INSERT INTO ocorrencia (data, hora, bairro, rua, descricao) VALUES
 ('2026-07-17', '02:40:00', 'Amambaí',        'Rua Barão do Rio Branco',
  'Furto de bicicleta reportado em frente a uma padaria durante a madrugada.'),
@@ -106,10 +89,6 @@ INSERT INTO ocorrencia (data, hora, bairro, rua, descricao) VALUES
  'Durante a confraternização de fim de semestre da empresa júnior Mega, o mascote da equipe, conhecido como "Pato da Mega", foi furtado da sala de reuniões por volta das 23h15. Testemunhas relatam ter visto uma pessoa saindo apressada pela porta dos fundos poucos minutos antes do sumiço ser notado. Um segurança do prédio vizinho afirma ter visto um carro saindo em alta velocidade da rua ao lado por volta do mesmo horário.'),
 ('2026-07-18', '04:10:00', 'Vila Progresso', 'Rua Espírito Santo',
  'Depredação de um ponto de ônibus, sem testemunhas identificadas.');
-
--- ---------------------------------------------------------------------------
--- Depoimentos (3 relevantes ao caso do Centro + 2 decoys de outras ocorrências)
--- ---------------------------------------------------------------------------
 
 INSERT INTO depoimentos (ocorrencia_id, pessoa_id, transcricao) VALUES
 (3, (SELECT id FROM pessoas WHERE nome = 'Camila Torres'),
@@ -123,12 +102,8 @@ INSERT INTO depoimentos (ocorrencia_id, pessoa_id, transcricao) VALUES
 (2, (SELECT id FROM pessoas WHERE nome = 'Gustavo Ferreira'),
  'O som alto vinha de uma casa duas quadras daqui, não sei dizer de quem é.');
 
--- ---------------------------------------------------------------------------
--- Ligações telefônicas (15 registros, 1 relevante: chamada curta pro nº da Beatriz)
--- ---------------------------------------------------------------------------
-
 INSERT INTO ligacoes (numero_origem, numero_destino, data, hora, duracao_segundos) VALUES
-('67991234567', '67998887766', '2026-07-17', '23:05:12', 45),   -- Rafael -> Beatriz (RELEVANTE)
+('67991234567', '67998887766', '2026-07-17', '23:05:12', 45),
 ('67996665544', '67993332211', '2026-07-17', '22:50:00', 320),
 ('67993332211', '67994443322', '2026-07-17', '18:12:00', 180),
 ('67995556677', '67996667788', '2026-07-17', '09:05:00', 600),
@@ -144,10 +119,6 @@ INSERT INTO ligacoes (numero_origem, numero_destino, data, hora, duracao_segundo
 ('67995050505', '67996060606', '2026-07-17', '12:00:00', 55),
 ('67991010101', '67992020202', '2026-07-17', '23:06:00', 900);
 
--- ---------------------------------------------------------------------------
--- Pix (6 registros, 1 relevante: passagem rodoviária pouco antes da meia-noite)
--- ---------------------------------------------------------------------------
-
 INSERT INTO pix (pessoa_id, valor, data, hora, descricao) VALUES
 ((SELECT id FROM pessoas WHERE nome = 'Rafael Almeida Souza'), 89.90, '2026-07-17', '23:20:00', 'Compra de passagem rodoviária'),
 ((SELECT id FROM pessoas WHERE nome = 'Larissa Prado'),        32.00, '2026-07-17', '19:45:00', 'Pagamento de Uber'),
@@ -155,10 +126,6 @@ INSERT INTO pix (pessoa_id, valor, data, hora, descricao) VALUES
 ((SELECT id FROM pessoas WHERE nome = 'Vinícius Duarte'),      15.00, '2026-07-16', '10:00:00', 'Transferência entre amigos'),
 ((SELECT id FROM pessoas WHERE nome = 'Ana Beatriz Cardoso'), 120.00, '2026-07-17', '10:30:00', 'Pagamento de conta de luz'),
 ((SELECT id FROM pessoas WHERE nome = 'Diego Camargo'),        45.00, '2026-07-18', '09:00:00', 'Transferência entre amigos');
-
--- ---------------------------------------------------------------------------
--- Passagens rodoviárias (6 registros, 1 relevante: fuga pra Bonito)
--- ---------------------------------------------------------------------------
 
 INSERT INTO passagens (pessoa_id, empresa, origem, destino, data, hora_saida) VALUES
 ((SELECT id FROM pessoas WHERE nome = 'Rafael Almeida Souza'), 'Viação Cruzeiro do Sul', 'Campo Grande', 'Bonito',      '2026-07-17', '23:50:00'),
@@ -168,13 +135,9 @@ INSERT INTO passagens (pessoa_id, empresa, origem, destino, data, hora_saida) VA
 ((SELECT id FROM pessoas WHERE nome = 'Isabela Farias'),       'Viação Cruzeiro do Sul', 'Campo Grande', 'Três Lagoas', '2026-07-18', '13:30:00'),
 ((SELECT id FROM pessoas WHERE nome = 'Bruno Teixeira'),       'Viação Motta',           'Campo Grande', 'Dourados',    '2026-07-14', '06:00:00');
 
--- ---------------------------------------------------------------------------
--- Câmeras (10 registros, 1 relevante: placa exata na Rua 14 de Julho no horário)
--- ---------------------------------------------------------------------------
-
 INSERT INTO cameras (local, placa_carro, data, hora) VALUES
-('Rua 14 de Julho',      'HNT4E21', '2026-07-17', '23:15:00'),  -- RELEVANTE (Rafael)
-('Avenida Mato Grosso',  'HNT4E27', '2026-07-17', '20:00:00'),  -- decoy (Vinícius, local/hora diferentes)
+('Rua 14 de Julho',      'HNT4E21', '2026-07-17', '23:15:00'),
+('Avenida Mato Grosso',  'HNT4E27', '2026-07-17', '20:00:00'),
 ('Avenida Afonso Pena',  'CGC8J14', '2026-07-17', '18:00:00'),
 ('Rua Bahia',            'CGA9B12', '2026-07-17', '22:30:00'),
 ('Rua Dom Aquino',       'CGB1F09', '2026-07-17', '07:45:00'),
@@ -183,10 +146,6 @@ INSERT INTO cameras (local, placa_carro, data, hora) VALUES
 ('Rua Pernambuco',       'MSU7G31', '2026-07-16', '12:00:00'),
 ('Rua Marechal Rondon',  'CGD4N77', '2026-07-17', '21:20:00'),
 ('Avenida Afonso Pena',  'PTM5D44', '2026-07-17', '23:10:00');
-
--- ---------------------------------------------------------------------------
--- Role somente-leitura usada pelas queries dos participantes
--- ---------------------------------------------------------------------------
 
 CREATE ROLE investigador WITH LOGIN PASSWORD 'investigador_ro_2026';
 GRANT CONNECT ON DATABASE pato_da_mega TO investigador;

@@ -5,7 +5,7 @@ import psycopg2
 from fastapi import APIRouter, HTTPException, Request, Response
 from sqlalchemy.engine import make_url
 
-from app.db import DATABASE_URL
+from app.db import COOKIE_SECURE, DATABASE_URL
 from app.schemas import PlaygroundQueryRequest, PlaygroundQueryResponse, SimpleOk
 
 router = APIRouter(prefix="/api/playground")
@@ -17,14 +17,9 @@ _PG_DB = _url.database
 _ADMIN_USER = _url.username
 _ADMIN_PASSWORD = _url.password
 
-# Só aceitamos nomes de role que nós mesmos geramos (ver _new_role_name) antes
-# de interpolar em qualquer DDL — o cookie é enviado pelo cliente e não é
-# confiável por si só.
+# valida antes de interpolar em ddl, cookie do cliente nao e confiavel
 ROLE_RE = re.compile(r"^play_[0-9a-f]{12}$")
 
-# Mesmas 18 pessoas do banco do caso (ver app/seed/caso.sql), só pra dar um
-# ponto de partida realista pro playground — não é segredo, já é uma tabela
-# que dá pra consultar livremente no caso de verdade.
 PESSOAS_SEED = [
     (1, "Camila Torres", "67991112233", "Rua Bahia, 210", "Jardim dos Estados", "CGA9B12", "Dev"),
     (2, "Eduardo Nascimento", "67997654321", "Rua 14 de Julho, 500", "Centro", "MSV2C88", "Segurança (prédio vizinho)"),
@@ -112,8 +107,12 @@ def _drop_role(role: str):
 
 
 def _set_playground_cookies(response: Response, role: str, password: str):
-    response.set_cookie("play_role", role, httponly=True, samesite="lax", max_age=60 * 60 * 12)
-    response.set_cookie("play_pw", password, httponly=True, samesite="lax", max_age=60 * 60 * 12)
+    response.set_cookie(
+        "play_role", role, httponly=True, samesite="lax", secure=COOKIE_SECURE, max_age=60 * 60 * 12
+    )
+    response.set_cookie(
+        "play_pw", password, httponly=True, samesite="lax", secure=COOKIE_SECURE, max_age=60 * 60 * 12
+    )
 
 
 @router.post("/start", response_model=SimpleOk)
@@ -126,7 +125,7 @@ def start(request: Request, response: Response):
             conn.close()
             return SimpleOk(ok=True)
         except Exception:
-            pass  # sessão antiga inválida, reprovisiona do zero
+            pass  # sessao invalida, reprovisiona
 
     role = _new_role_name()
     password = secrets.token_urlsafe(18)

@@ -73,38 +73,6 @@ const CASE_BRIEF =
   "lado por volta do mesmo horário. Vasculhe os registros da empresa e da polícia " +
   "para descobrir quem — e por quê — levou o pato.";
 
-const MOTIVE_REVEAL =
-  "Rafael Almeida Souza confessou: pegou o Pato da Mega pra tirar fotos em Bonito " +
-  "e postar nos stories, prometendo devolver na segunda-feira. \"Era só uma " +
-  'zoeira, eu ia devolver antes de todo mundo notar\", disse ele.';
-
-const SOLUTION_PATH = [
-  {
-    texto: "Achar o boletim do furto no Centro.",
-    sql: "SELECT * FROM ocorrencia WHERE bairro = 'Centro';",
-  },
-  {
-    texto: "Ler os depoimentos ligados àquela ocorrência.",
-    sql: "SELECT * FROM depoimentos WHERE ocorrencia_id = 3;",
-  },
-  {
-    texto: "Achar a placa exata na câmera da Rua 14 de Julho.",
-    sql: "SELECT * FROM cameras\nWHERE local LIKE '%14 de Julho%' AND placa_carro LIKE 'HNT%';",
-  },
-  {
-    texto: "Descobrir de quem é essa placa.",
-    sql: "SELECT * FROM pessoas WHERE placa_carro = 'HNT4E21';",
-  },
-  {
-    texto: "Confirmar a ligação curta e suspeita pro telefone da Beatriz.",
-    sql: "SELECT * FROM ligacoes\nWHERE duracao_segundos < 60 AND hora BETWEEN '23:00' AND '23:10';",
-  },
-  {
-    texto: "Confirmar a fuga: pagamento da passagem e o ônibus pra Bonito.",
-    sql: "SELECT * FROM pix WHERE pessoa_id = 4;\nSELECT * FROM passagens WHERE pessoa_id = 4;",
-  },
-];
-
 async function api(method, url, body) {
   const resp = await fetch(url, {
     method,
@@ -127,9 +95,9 @@ createApp({
       sqlCheatsheet: SQL_CHEATSHEET,
       playgroundSchemaHints: PLAYGROUND_SCHEMA_HINTS,
       playgroundCheatsheet: PLAYGROUND_CHEATSHEET,
-      solutionPath: SOLUTION_PATH,
+      solutionPath: [],
       caseBrief: CASE_BRIEF,
-      motiveReveal: MOTIVE_REVEAL,
+      motiveReveal: "",
 
       nomeInput: "",
       nome: "",
@@ -163,6 +131,7 @@ createApp({
       suspeito: "",
       pessoasNomes: [],
       solveLoading: false,
+      tentativasRestantes: 3,
 
       finalElapsed: null,
       rankingPosicao: null,
@@ -238,9 +207,7 @@ createApp({
     async loadPessoasNomes() {
       try {
         this.pessoasNomes = await api("GET", "/api/pessoas/nomes");
-      } catch (e) {
-        // não crítico pro autocomplete
-      }
+      } catch (e) {}
     },
     async loadRanking() {
       try {
@@ -248,9 +215,7 @@ createApp({
         this.rankingTotal = lista.length;
         const entry = lista.find((e) => e.nome === this.nome);
         this.rankingPosicao = entry ? entry.posicao : null;
-      } catch (e) {
-        // ranking é só um bônus visual, ignora erro
-      }
+      } catch (e) {}
     },
     async bootstrap() {
       try {
@@ -258,9 +223,12 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
+        this.tentativasRestantes = me.tentativas_restantes;
         this.loadPessoasNomes();
         if (me.solved) {
           this.finalElapsed = me.elapsed_seconds;
+          this.motiveReveal = me.motive_reveal;
+          this.solutionPath = me.solution_path || [];
           this.stage = "vitoria";
           this.loadRanking();
         } else {
@@ -284,6 +252,7 @@ createApp({
         this.nome = me.nome;
         this.startedAt = new Date(me.started_at).getTime();
         this.queryCount = me.query_count;
+        this.tentativasRestantes = me.tentativas_restantes;
         this.stage = "game";
         this.startTimer();
         this.loadPessoasNomes();
@@ -398,14 +367,24 @@ createApp({
       this.solveLoading = true;
       try {
         const resp = await api("POST", "/api/solve", { suspeito });
+        if (resp.tentativas_restantes !== null && resp.tentativas_restantes !== undefined) {
+          this.tentativasRestantes = resp.tentativas_restantes;
+        }
         if (resp.correct) {
           this.finalElapsed = resp.elapsed_seconds;
           this.queryCount = resp.query_count;
+          this.motiveReveal = resp.motive_reveal;
+          this.solutionPath = resp.solution_path || [];
           clearInterval(this.timerHandle);
           this.stage = "vitoria";
           this.loadRanking();
+        } else if (this.tentativasRestantes <= 0) {
+          this.notify("Você usou suas 3 tentativas. Continue investigando, mas não dá mais pra acusar.", "error");
         } else {
-          this.notify("Não foi essa pessoa — continue investigando!", "warning");
+          this.notify(
+            `Não foi essa pessoa — restam ${this.tentativasRestantes} tentativa(s).`,
+            "warning"
+          );
         }
       } catch (e) {
         this.notify(e.message);
@@ -650,10 +629,21 @@ createApp({
                     label="Nome do suspeito"
                     variant="outlined"
                     density="comfortable"
+                    :disabled="tentativasRestantes <= 0"
                   />
-                  <v-btn block color="secondary" size="large" :loading="solveLoading" @click="acusar">
+                  <v-btn
+                    block
+                    color="secondary"
+                    size="large"
+                    :loading="solveLoading"
+                    :disabled="tentativasRestantes <= 0"
+                    @click="acusar"
+                  >
                     Acusar
                   </v-btn>
+                  <p class="text-caption mt-2 text-center" style="opacity: 0.75;">
+                    {{ tentativasRestantes }} tentativa(s) restante(s)
+                  </p>
                 </v-card-text>
               </v-card>
             </v-col>
@@ -817,6 +807,9 @@ createApp({
             </v-expansion-panels>
           </v-card-text>
           <v-card-actions>
+            <v-btn variant="tonal" color="secondary" :loading="playgroundLoading" @click="enterPlayground">
+              Ir pro playground
+            </v-btn>
             <v-spacer />
             <v-btn color="primary" href="/ranking" target="_blank">Ver ranking ao vivo</v-btn>
           </v-card-actions>

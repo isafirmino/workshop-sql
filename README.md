@@ -5,7 +5,7 @@ ambientado em Campo Grande/MS. Cada participante entra com o nome, investiga o
 banco de dados do caso escrevendo queries reais, e é cronometrado até acusar o
 culpado certo. Ranking ao vivo em `/ranking` pra projetar no telão.
 
-## Subir com Docker (recomendado)
+## Rodando localmente
 
 ```bash
 cp .env.example .env   # ajuste se quiser trocar usuário/senha do Postgres
@@ -18,8 +18,10 @@ Isso sobe o Postgres (com o banco do caso já populado via
 - Tela do jogo: `http://localhost:8000/`
 - Ranking pra projetar: `http://localhost:8000/ranking`
 
-Pra rodar no dia do evento numa rede local, troque `localhost` pelo IP da
-máquina que estiver rodando o servidor e libere a porta 8000 no firewall.
+Pra rodar numa rede local (ex: projetor + celulares dos participantes na
+mesma rede), troque `localhost` pelo IP da máquina que estiver rodando o
+servidor. Pra expor na internet, qualquer reverse proxy/túnel serve (Caddy,
+nginx, ngrok, Cloudflare Tunnel etc.) — é só apontar pra porta `8000`.
 
 ## Rodando sem Docker (Postgres já existente)
 
@@ -51,22 +53,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
   o horário de resolução na primeira vez que acertar.
 - `GET /api/ranking` lista quem já resolveu, ordenado por tempo (empate:
   menos queries) — é isso que a tela `/ranking` fica atualizando a cada 3s.
-
-## Resolvendo o caso (gabarito pros organizadores)
-
-1. `SELECT * FROM ocorrencia WHERE bairro = 'Centro';` → acha o boletim do
-   furto do Pato da Mega.
-2. `SELECT * FROM depoimentos WHERE ocorrencia_id = 3;` → lê as 3 pistas
-   (boné vermelho + "terminal", carro prata placa "HNT..." saindo da Rua 14
-   de Julho, ligação curta ~23h05 pra Beatriz).
-3. `SELECT * FROM cameras WHERE local LIKE '%14 de Julho%' AND placa_carro LIKE 'HNT%';`
-   → placa exata `HNT4E21` (cuidado com o decoy `HNT4E27` de outro local/horário).
-4. `SELECT * FROM pessoas WHERE placa_carro = 'HNT4E21';` → **Rafael Almeida
-   Souza**.
-5. Confirma com `ligacoes` (telefone do Rafael → telefone da Beatriz, <60s,
-   ~23h05), `pix` (compra de passagem perto da meia-noite) e `passagens`
-   (saída pra Bonito antes da meia-noite).
-6. Resposta final: **Rafael Almeida Souza**.
+- Tem também um **playground livre** (`/api/playground/*`), sem cronômetro
+  nem pontuação, pra quem quiser testar `INSERT`/`UPDATE`/`DELETE`/
+  `CREATE TABLE`/`DROP TABLE` à vontade. Cada participante que entra no
+  playground ganha uma role e um schema Postgres só dele, criados na hora —
+  então dá pra "quebrar" o próprio banco sem afetar ninguém: um `DROP TABLE`
+  ali derruba só a cópia isolada de quem rodou.
 
 ## Reiniciar o caso entre turmas
 

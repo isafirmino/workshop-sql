@@ -45,9 +45,7 @@ createApp({
       try {
         const resp = await fetch("/api/ranking");
         this.entries = await resp.json();
-      } catch (e) {
-        // mantém o último ranking bom em caso de falha de rede momentânea
-      }
+      } catch (e) {}
     },
   },
   mounted() {
