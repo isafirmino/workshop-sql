@@ -1,0 +1,22 @@
+# Ambiente / segredos
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Docker
+postgres-data/
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+
+# Node (caso alguém rode ferramentas de teste localmente)
+node_modules/

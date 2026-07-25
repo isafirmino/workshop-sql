@@ -1,0 +1,80 @@
+:root {
+  --pdm-bg: #14181f;
+  --pdm-paper: #1c222c;
+  --pdm-amber: #e8a33d;
+  --pdm-rust: #c1502e;
+  --pdm-ink: #eae6df;
+}
+
+html, body, #app {
+  min-height: 100%;
+  background: var(--pdm-bg);
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(232, 163, 61, 0.08), transparent 45%),
+    radial-gradient(circle at 85% 100%, rgba(193, 80, 46, 0.08), transparent 45%);
+  background-attachment: fixed;
+}
+
+.pdm-display {
+  font-family: 'Oswald', sans-serif;
+  letter-spacing: 0.03em;
+}
+
+.pdm-eyebrow {
+  font-family: 'Oswald', sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--pdm-amber);
+  opacity: 0.9;
+}
+
+.pdm-mono {
+  font-family: 'Roboto Mono', monospace;
+}
+
+.pdm-case-file {
+  border-left: 4px solid var(--pdm-amber);
+  background: rgba(232, 163, 61, 0.06);
+  padding: 16px 20px;
+  border-radius: 4px;
+  line-height: 1.6;
+}
+
+.pdm-sql-editor textarea {
+  font-family: 'Roboto Mono', monospace !important;
+  font-size: 0.92rem;
+}
+
+.pdm-timer {
+  font-family: 'Roboto Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.pdm-login-bg {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.pdm-results-table td, .pdm-results-table th {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.pdm-fade-enter-active, .pdm-fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.pdm-fade-enter-from, .pdm-fade-leave-to {
+  opacity: 0;
+}

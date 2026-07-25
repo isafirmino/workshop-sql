@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workshop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-workshop}
+      POSTGRES_DB: ${POSTGRES_DB:-pato_da_mega}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./app/seed/caso.sql:/docker-entrypoint-initdb.d/01-caso.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-workshop} -d ${POSTGRES_DB:-pato_da_mega}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-workshop}:${POSTGRES_PASSWORD:-workshop}@db:5432/${POSTGRES_DB:-pato_da_mega}
+      # senha do role investigador é fixada em app/seed/caso.sql (role read-only,
+      # sem acesso de escrita a nada — trocar em ambos os lugares se quiser mudar)
+      INVESTIGADOR_DATABASE_URL: postgresql+psycopg2://investigador:investigador_ro_2026@db:5432/${POSTGRES_DB:-pato_da_mega}
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
