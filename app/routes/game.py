@@ -23,7 +23,7 @@ from app.schemas import (
 router = APIRouter(prefix="/api")
 
 CORRECT_TOKENS = ["rafael", "souza"]
-MAX_TENTATIVAS = 3
+TENTATIVA_PENALTY_SECONDS = 30
 
 MOTIVE_REVEAL = (
     "Rafael Almeida Souza confessou: pegou o Pato da Mega pra tirar fotos em Bonito "
@@ -85,9 +85,11 @@ def get_participant(
 
 def _me_response(p: Participante) -> MeResponse:
     now = datetime.now(timezone.utc)
-    end = p.solved_at or now
-    elapsed = (end - p.started_at).total_seconds()
     solved = p.solved_at is not None
+    desistiu = p.desistiu_at is not None
+    end = p.solved_at or p.desistiu_at or now
+    elapsed = (end - p.started_at).total_seconds()
+    revelar = solved or desistiu
     return MeResponse(
         nome=p.nome,
         started_at=p.started_at,
@@ -95,9 +97,10 @@ def _me_response(p: Participante) -> MeResponse:
         solved=solved,
         solved_at=p.solved_at,
         elapsed_seconds=elapsed,
-        tentativas_restantes=max(0, MAX_TENTATIVAS - p.tentativas),
-        motive_reveal=MOTIVE_REVEAL if solved else None,
-        solution_path=SOLUTION_PATH if solved else None,
+        tentativas=p.tentativas,
+        desistiu=desistiu,
+        motive_reveal=MOTIVE_REVEAL if revelar else None,
+        solution_path=SOLUTION_PATH if revelar else None,
     )
 
 
@@ -156,7 +159,7 @@ def run_query(
 ):
     sql = payload.sql.strip()
 
-    if participante.solved_at is None:
+    if participante.solved_at is None and participante.desistiu_at is None:
         participante.query_count += 1
         db.commit()
 
@@ -205,13 +208,10 @@ def solve(
             correct=True,
             elapsed_seconds=m.elapsed_seconds,
             query_count=participante.query_count,
-            tentativas_restantes=m.tentativas_restantes,
+            tentativas=m.tentativas,
             motive_reveal=m.motive_reveal,
             solution_path=m.solution_path,
         )
-
-    if participante.tentativas >= MAX_TENTATIVAS:
-        raise HTTPException(429, "Você já usou suas 3 tentativas de acusação.")
 
     norm = _normalize(payload.suspeito)
     correct = all(tok in norm for tok in CORRECT_TOKENS)
@@ -219,10 +219,7 @@ def solve(
         participante.tentativas += 1
         db.commit()
         db.refresh(participante)
-        return SolveResponse(
-            correct=False,
-            tentativas_restantes=max(0, MAX_TENTATIVAS - participante.tentativas),
-        )
+        return SolveResponse(correct=False, tentativas=participante.tentativas)
 
     participante.solved_at = datetime.now(timezone.utc)
     db.commit()
@@ -232,7 +229,29 @@ def solve(
         correct=True,
         elapsed_seconds=m.elapsed_seconds,
         query_count=participante.query_count,
-        tentativas_restantes=m.tentativas_restantes,
+        tentativas=m.tentativas,
+        motive_reveal=m.motive_reveal,
+        solution_path=m.solution_path,
+    )
+
+
+@router.post("/desistir", response_model=SolveResponse)
+def desistir(
+    participante: Participante = Depends(get_participant),
+    db: Session = Depends(get_db),
+):
+    if participante.solved_at is None and participante.desistiu_at is None:
+        participante.desistiu_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(participante)
+
+    m = _me_response(participante)
+    return SolveResponse(
+        correct=m.solved,
+        desistiu=m.desistiu,
+        elapsed_seconds=m.elapsed_seconds,
+        query_count=participante.query_count,
+        tentativas=m.tentativas,
         motive_reveal=m.motive_reveal,
         solution_path=m.solution_path,
     )
@@ -240,20 +259,44 @@ def solve(
 
 @router.get("/ranking", response_model=list[RankingEntry])
 def ranking(db: Session = Depends(get_db)):
-    participantes = (
+    resolvidos = (
         db.query(Participante).filter(Participante.solved_at.isnot(None)).all()
+    )
+    desistentes = (
+        db.query(Participante)
+        .filter(Participante.solved_at.is_(None), Participante.desistiu_at.isnot(None))
+        .all()
     )
 
     def elapsed(p: Participante) -> float:
         return (p.solved_at - p.started_at).total_seconds()
 
-    participantes.sort(key=lambda p: (elapsed(p), p.query_count))
-    return [
+    def score(p: Participante) -> float:
+        return elapsed(p) + p.tentativas * TENTATIVA_PENALTY_SECONDS
+
+    resolvidos.sort(key=lambda p: (score(p), p.query_count))
+    desistentes.sort(key=lambda p: _normalize(p.nome))
+
+    entries = [
         RankingEntry(
             posicao=i + 1,
             nome=p.nome,
             elapsed_seconds=elapsed(p),
             query_count=p.query_count,
+            tentativas=p.tentativas,
+            desistiu=False,
         )
-        for i, p in enumerate(participantes)
+        for i, p in enumerate(resolvidos)
     ]
+    entries += [
+        RankingEntry(
+            posicao=None,
+            nome=p.nome,
+            elapsed_seconds=None,
+            query_count=p.query_count,
+            tentativas=p.tentativas,
+            desistiu=True,
+        )
+        for p in desistentes
+    ]
+    return entries

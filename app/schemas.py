@@ -19,7 +19,8 @@ class MeResponse(BaseModel):
     solved: bool
     solved_at: datetime | None
     elapsed_seconds: float
-    tentativas_restantes: int
+    tentativas: int
+    desistiu: bool = False
     motive_reveal: str | None = None
     solution_path: list[SolutionStep] | None = None
 
@@ -42,18 +43,21 @@ class SolveRequest(BaseModel):
 
 class SolveResponse(BaseModel):
     correct: bool
+    desistiu: bool = False
     elapsed_seconds: float | None = None
     query_count: int | None = None
-    tentativas_restantes: int | None = None
+    tentativas: int | None = None
     motive_reveal: str | None = None
     solution_path: list[SolutionStep] | None = None
 
 
 class RankingEntry(BaseModel):
-    posicao: int
+    posicao: int | None
     nome: str
-    elapsed_seconds: float
+    elapsed_seconds: float | None
     query_count: int
+    tentativas: int
+    desistiu: bool = False
 
 
 class SimpleOk(BaseModel):
