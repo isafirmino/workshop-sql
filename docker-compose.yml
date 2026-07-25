@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-workshop}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina uma senha no .env (openssl rand -hex 16)}
       POSTGRES_DB: ${POSTGRES_DB:-pato_da_mega}
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./app/seed/caso.sql:/docker-entrypoint-initdb.d/01-caso.sql
