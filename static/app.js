@@ -238,9 +238,7 @@ createApp({
     async loadPessoasNomes() {
       try {
         this.pessoasNomes = await api("GET", "/api/pessoas/nomes");
-      } catch (e) {
-        // não crítico pro autocomplete
-      }
+      } catch (e) {}
     },
     async loadRanking() {
       try {
@@ -248,9 +246,7 @@ createApp({
         this.rankingTotal = lista.length;
         const entry = lista.find((e) => e.nome === this.nome);
         this.rankingPosicao = entry ? entry.posicao : null;
-      } catch (e) {
-        // ranking é só um bônus visual, ignora erro
-      }
+      } catch (e) {}
     },
     async bootstrap() {
       try {

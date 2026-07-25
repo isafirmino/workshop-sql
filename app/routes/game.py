@@ -8,7 +8,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.db import get_db, investigador_engine
+from app.db import COOKIE_SECURE, get_db, investigador_engine
 from app.models import Participante
 from app.schemas import (
     MeResponse,
@@ -22,8 +22,6 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api")
 
-# Nome completo do culpado (ver app/seed/caso.sql). Aceita variações de
-# capitalização/acento e nomes parciais, desde que citem nome + sobrenome.
 CORRECT_TOKENS = ["rafael", "souza"]
 
 QUERY_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
@@ -80,7 +78,12 @@ def signup(payload: SignupRequest, response: Response, db: Session = Depends(get
     db.refresh(participante)
 
     response.set_cookie(
-        "session_token", token, httponly=True, samesite="lax", max_age=60 * 60 * 12
+        "session_token",
+        token,
+        httponly=True,
+        samesite="lax",
+        secure=COOKIE_SECURE,
+        max_age=60 * 60 * 12,
     )
     return _me_response(participante)
 
@@ -101,8 +104,7 @@ def _clean_pg_error(msg: str) -> str:
 
 @router.get("/pessoas/nomes", response_model=list[str])
 def pessoas_nomes(participante: Participante = Depends(get_participant)):
-    # Lista de nomes só pra alimentar o autocomplete do campo de resposta final
-    # (não conta como query de investigação).
+    # autocomplete, nao conta como query
     with investigador_engine.connect() as conn:
         result = conn.execute(text("SELECT nome FROM pessoas ORDER BY nome"))
         return [row[0] for row in result]

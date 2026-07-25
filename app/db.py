@@ -12,14 +12,15 @@ INVESTIGADOR_DATABASE_URL = os.environ.get(
     "postgresql+psycopg2://investigador:investigador_ro_2026@localhost:5432/pato_da_mega",
 )
 
-# Conexão de leitura/escrita: só usada para as tabelas internas do workshop
-# (participantes). Nunca executa SQL vindo do participante.
+# false em http local, senao o navegador nao reenvia o cookie
+COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"
+
+# nunca roda sql vindo do participante
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 Base = declarative_base()
 
-# Conexão somente-leitura (role `investigador`, GRANT SELECT nas tabelas do
-# caso): é essa que roda a query que o participante escreve.
+# roda o sql do participante, role investigador (somente select)
 investigador_engine = create_engine(
     INVESTIGADOR_DATABASE_URL,
     pool_pre_ping=True,
