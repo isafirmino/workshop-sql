@@ -25,6 +25,39 @@ router = APIRouter(prefix="/api")
 CORRECT_TOKENS = ["rafael", "souza"]
 MAX_TENTATIVAS = 3
 
+MOTIVE_REVEAL = (
+    "Rafael Almeida Souza confessou: pegou o Pato da Mega pra tirar fotos em Bonito "
+    "e postar nos stories, prometendo devolver na segunda-feira. \"Era só uma "
+    'zoeira, eu ia devolver antes de todo mundo notar", disse ele.'
+)
+
+SOLUTION_PATH = [
+    {
+        "texto": "Achar o boletim do furto no Centro.",
+        "sql": "SELECT * FROM ocorrencia WHERE bairro = 'Centro';",
+    },
+    {
+        "texto": "Ler os depoimentos ligados àquela ocorrência.",
+        "sql": "SELECT * FROM depoimentos WHERE ocorrencia_id = 3;",
+    },
+    {
+        "texto": "Achar a placa exata na câmera da Rua 14 de Julho.",
+        "sql": "SELECT * FROM cameras\nWHERE local LIKE '%14 de Julho%' AND placa_carro LIKE 'HNT%';",
+    },
+    {
+        "texto": "Descobrir de quem é essa placa.",
+        "sql": "SELECT * FROM pessoas WHERE placa_carro = 'HNT4E21';",
+    },
+    {
+        "texto": "Confirmar a ligação curta e suspeita pro telefone da Beatriz.",
+        "sql": "SELECT * FROM ligacoes\nWHERE duracao_segundos < 60 AND hora BETWEEN '23:00' AND '23:10';",
+    },
+    {
+        "texto": "Confirmar a fuga: pagamento da passagem e o ônibus pra Bonito.",
+        "sql": "SELECT * FROM pix WHERE pessoa_id = 4;\nSELECT * FROM passagens WHERE pessoa_id = 4;",
+    },
+]
+
 QUERY_RE = re.compile(r"^\s*(select|with)\b", re.IGNORECASE)
 
 
@@ -54,14 +87,17 @@ def _me_response(p: Participante) -> MeResponse:
     now = datetime.now(timezone.utc)
     end = p.solved_at or now
     elapsed = (end - p.started_at).total_seconds()
+    solved = p.solved_at is not None
     return MeResponse(
         nome=p.nome,
         started_at=p.started_at,
         query_count=p.query_count,
-        solved=p.solved_at is not None,
+        solved=solved,
         solved_at=p.solved_at,
         elapsed_seconds=elapsed,
         tentativas_restantes=max(0, MAX_TENTATIVAS - p.tentativas),
+        motive_reveal=MOTIVE_REVEAL if solved else None,
+        solution_path=SOLUTION_PATH if solved else None,
     )
 
 
@@ -170,6 +206,8 @@ def solve(
             elapsed_seconds=m.elapsed_seconds,
             query_count=participante.query_count,
             tentativas_restantes=m.tentativas_restantes,
+            motive_reveal=m.motive_reveal,
+            solution_path=m.solution_path,
         )
 
     if participante.tentativas >= MAX_TENTATIVAS:
@@ -195,6 +233,8 @@ def solve(
         elapsed_seconds=m.elapsed_seconds,
         query_count=participante.query_count,
         tentativas_restantes=m.tentativas_restantes,
+        motive_reveal=m.motive_reveal,
+        solution_path=m.solution_path,
     )
 
 

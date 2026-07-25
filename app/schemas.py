@@ -7,6 +7,11 @@ class SignupRequest(BaseModel):
     nome: str
 
 
+class SolutionStep(BaseModel):
+    texto: str
+    sql: str
+
+
 class MeResponse(BaseModel):
     nome: str
     started_at: datetime
@@ -15,6 +20,8 @@ class MeResponse(BaseModel):
     solved_at: datetime | None
     elapsed_seconds: float
     tentativas_restantes: int
+    motive_reveal: str | None = None
+    solution_path: list[SolutionStep] | None = None
 
 
 class QueryRequest(BaseModel):
@@ -38,6 +45,8 @@ class SolveResponse(BaseModel):
     elapsed_seconds: float | None = None
     query_count: int | None = None
     tentativas_restantes: int | None = None
+    motive_reveal: str | None = None
+    solution_path: list[SolutionStep] | None = None
 
 
 class RankingEntry(BaseModel):

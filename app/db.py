@@ -3,14 +3,16 @@ import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+psycopg2://workshop:workshop@localhost:5432/pato_da_mega",
-)
-INVESTIGADOR_DATABASE_URL = os.environ.get(
-    "INVESTIGADOR_DATABASE_URL",
-    "postgresql+psycopg2://investigador:investigador_ro_2026@localhost:5432/pato_da_mega",
-)
+
+def _require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise RuntimeError(f"variavel de ambiente {name} nao foi definida")
+    return value
+
+
+DATABASE_URL = _require_env("DATABASE_URL")
+INVESTIGADOR_DATABASE_URL = _require_env("INVESTIGADOR_DATABASE_URL")
 
 # false em http local, senao o navegador nao reenvia o cookie
 COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "false").lower() == "true"

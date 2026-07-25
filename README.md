@@ -60,22 +60,6 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
   então dá pra "quebrar" o próprio banco sem afetar ninguém: um `DROP TABLE`
   ali derruba só a cópia isolada de quem rodou.
 
-## Resolvendo o caso (gabarito pros organizadores)
-
-1. `SELECT * FROM ocorrencia WHERE bairro = 'Centro';` → acha o boletim do
-   furto do Pato da Mega.
-2. `SELECT * FROM depoimentos WHERE ocorrencia_id = 3;` → lê as 3 pistas
-   (boné vermelho + "terminal", carro prata placa "HNT..." saindo da Rua 14
-   de Julho, ligação curta ~23h05 pra Beatriz).
-3. `SELECT * FROM cameras WHERE local LIKE '%14 de Julho%' AND placa_carro LIKE 'HNT%';`
-   → placa exata `HNT4E21` (cuidado com o decoy `HNT4E27` de outro local/horário).
-4. `SELECT * FROM pessoas WHERE placa_carro = 'HNT4E21';` → **Rafael Almeida
-   Souza**.
-5. Confirma com `ligacoes` (telefone do Rafael → telefone da Beatriz, <60s,
-   ~23h05), `pix` (compra de passagem perto da meia-noite) e `passagens`
-   (saída pra Bonito antes da meia-noite).
-6. Resposta final: **Rafael Almeida Souza**.
-
 ## Reiniciar o caso entre turmas
 
 Pra zerar participantes e ranking sem perder o banco do caso:
