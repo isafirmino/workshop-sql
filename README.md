@@ -1,6 +1,6 @@
 # O Sumiço do Pato da Mega
 
-Workshop de SQL da Empresa Júnior Mega — um mistério estilo CS50 Fiftyville,
+Workshop de SQL da MegaJr — um mistério estilo CS50 Fiftyville,
 ambientado em Campo Grande/MS. Cada participante entra com o nome, investiga o
 banco de dados do caso escrevendo queries reais, e é cronometrado até acusar o
 culpado certo. Ranking ao vivo em `/ranking` pra projetar no telão.

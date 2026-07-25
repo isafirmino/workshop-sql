@@ -406,10 +406,10 @@ createApp({
 
     <template v-else-if="stage === 'login'">
       <div class="pdm-login-bg">
-        <v-card max-width="440" class="pa-4" elevation="12">
+        <v-card max-width="480" class="pa-4" elevation="12">
           <v-card-item>
-            <div class="pdm-eyebrow mb-2">Empresa Júnior Mega &middot; Campo Grande, MS</div>
-            <v-card-title class="pdm-display text-h4">O Sumiço do Pato da Mega</v-card-title>
+            <div class="pdm-eyebrow mb-2">MegaJr &middot; Campo Grande, MS</div>
+            <v-card-title class="pdm-display text-h4" style="white-space: normal; line-height: 1.25;">🦆 O Sumiço do Pato da Mega</v-card-title>
             <v-card-subtitle class="mt-2" style="white-space: normal;">
               Um mascote desapareceu na confraternização de sexta. Entre com seu nome
               pra abrir o caso — o cronômetro e o contador de queries começam na hora.

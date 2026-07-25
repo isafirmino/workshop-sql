@@ -60,7 +60,7 @@ createApp({
     <v-main>
       <v-container class="py-10" style="max-width: 900px;">
         <div class="text-center mb-8">
-          <div class="pdm-eyebrow mb-2">Empresa Júnior Mega &middot; Campo Grande, MS</div>
+          <div class="pdm-eyebrow mb-2">MegaJr &middot; Campo Grande, MS</div>
           <h1 class="pdm-display text-h3">🦆 Ranking &mdash; O Sumiço do Pato da Mega</h1>
         </div>
 
